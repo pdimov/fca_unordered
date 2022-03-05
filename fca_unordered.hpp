@@ -18,7 +18,7 @@
 #include <limits>
 #include <memory>
 #include <vector>
-#include "fastrange.h"
+//#include "fastrange.h"
 
 namespace fca_unordered_impl{
     
@@ -156,6 +156,7 @@ struct prime_fmod_size
   }
 };
 
+/*
 struct prime_frng_size:prime_size
 {      
   static inline std::size_t position(std::size_t hash,std::size_t size_index)
@@ -178,6 +179,7 @@ struct prime_frng_fib_size:prime_frng_size
     return prime_frng_size::position(mix_hash(hash),size_index);
   }
 };
+*/
 
 struct pow2_size
 {

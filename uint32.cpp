@@ -248,6 +248,7 @@ using fca_fmod_unordered_map =
     std::allocator<fca_unordered_impl::map_value_adaptor<K, V>>,
     fca_unordered_impl::prime_fmod_size>;
 
+/*
 template<class K, class V, class H=boost::hash<K>>
 using fca_frng_unordered_map =
   fca_unordered_map<
@@ -261,6 +262,7 @@ using fca_frng_fib_unordered_map =
     K, V, H,std::equal_to<K>,
     std::allocator<fca_unordered_impl::map_value_adaptor<K, V>>,
     fca_unordered_impl::prime_frng_fib_size>;
+*/
 
 template<class K, class V, class H=boost::hash<K>>
 using fca_pow2_unordered_map =
@@ -292,25 +294,10 @@ int main()
     test<boost::unordered_map>( "boost::unordered_map" );
     test<multi_index_map>( "multi_index_map" );
 
-    test<fca_simple_unordered_map>( "fca_simple_unordered_map" );
     test<fca_unordered_map>( "fca_unordered_map" );
-    test<fca_switch_unordered_map>( "fca_switch_unordered_map" );
-    test<fca_fmod_unordered_map>( "fca_fmod_unordered_map" );
-
-    // frng is spectacularly slow for consecutive uint64 insertion
-    // (as expected, boost::hash is the identity and position ignores low bits)
-    // test<fca_frng_unordered_map>( "fca_frng_unordered_map" );
-    
-    test<fca_frng_fib_unordered_map>( "fca_frng_fib_unordered_map" );
-
-    // same as frng
-    // test<fca_pow2_unordered_map>( "fca_pow2_unordered_map" );
-    
     test<fca_pow2_fib_unordered_map>( "fca_pow2_fib_unordered_map" );
-
+    test<fca_fmod_unordered_map>( "fca_fmod_unordered_map" );
     test<fca_fmod_unordered_bucket_map>( "fca_fmod_unordered_bucket_map" );
-
-    // test<std::map>( "std::map" );
 
 #ifdef HAVE_ABSEIL
 
