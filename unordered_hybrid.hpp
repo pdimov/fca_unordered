@@ -113,10 +113,17 @@ struct pow2_fib_size: pow2_size
     }
 };
 
+inline std::uint32_t fingerprint( std::size_t hash )
+{
+    return hash % 251 + 5;
+    // return ( hash & 0xFC ) | 2;
+}
+
 template<class T> struct node
 {
     std::uintptr_t next_ = 0;
     std::size_t hash_ = 0;
+    std::uint32_t filter_ = 0;
     std::aligned_storage_t<sizeof(T), alignof(T)> storage_;
 
     static constexpr std::uintptr_t leaf = 1;
@@ -195,6 +202,30 @@ template<class T> struct node
         if( next() == nullptr ) return true;
 
         return next()->empty();
+    }
+
+    void update_filter()
+    {
+        std::uint32_t f = 0;
+        node* p = this;
+
+        for( int i = 0; i < 4; ++i )
+        {
+            p = p->next();
+
+            if( p == nullptr ) break;
+
+            std::uint32_t r = 1;
+
+            if( p->initialized() )
+            {
+                r = fingerprint( p->hash_ );
+            }
+
+            f |= r << ( 8 * i );
+        }
+
+        filter_ = f;
     }
 };
 
@@ -300,6 +331,8 @@ public:
             p2->next_ = p->next_;
             p->next_ = (std::uintptr_t)p2 | 1;
 
+            p->filter_ = ( p->filter_ << 8 ) + fingerprint( hash );
+
             p = p2;
         }
 
@@ -328,6 +361,8 @@ public:
             n->next_ = 0;
             delete n; // should use the allocator
         }
+
+        itb->update_filter();
 
         adjust_begin( itb );
     }
@@ -548,16 +583,103 @@ private:
     {
         node_type * p = itb.p_;
 
-        for( ;; )
+        if( p->initialized() && pred( x, p->value() ) )
         {
-            if( p->initialized() && hash == p->hash_ && pred( x, p->value() ) )
+            return { p, itb };
+        }
+
+        std::uint32_t filter = p->filter_;
+
+        std::uint32_t f1 = filter & 0xFF;
+
+        if( f1 == 0 )
+        {
+            return end();
+        }
+
+        std::uint32_t fh = fingerprint( hash );
+
+        if( f1 == fh )
+        {
+            node_type* p2 = p->next();
+
+            BOOST_ASSERT( p2->initialized() );
+
+            if( pred( x, p2->value() ) )
             {
-                return { p, itb };
+                return { p2, itb };
             }
+        }
 
-            p = p->next();
+        std::uint32_t f2 = ( filter >> 8 ) & 0xFF;
 
-            if( p == nullptr ) break;
+        if( f2 == 0 )
+        {
+            return end();
+        }
+
+        if( f2 == fh )
+        {
+            node_type* p2 = p->next()->next();
+
+            BOOST_ASSERT( p2->initialized() );
+
+            if( pred( x, p2->value() ) )
+            {
+                return { p2, itb };
+            }
+        }
+
+        std::uint32_t f3 = ( filter >> 16 ) & 0xFF;
+
+        if( f3 == 0 )
+        {
+            return end();
+        }
+
+        if( f3 == fh )
+        {
+            node_type* p2 = p->next()->next()->next();
+
+            BOOST_ASSERT( p2->initialized() );
+
+            if( pred( x, p2->value() ) )
+            {
+                return { p2, itb };
+            }
+        }
+
+        std::uint32_t f4 = ( filter >> 24 ) & 0xFF;
+
+        if( f4 == 0 )
+        {
+            return end();
+        }
+
+        if( f4 == fh )
+        {
+            node_type* p2 = p->next()->next()->next()->next();
+
+            BOOST_ASSERT( p2->initialized() );
+
+            if( pred( x, p2->value() ) )
+            {
+                return { p2, itb };
+            }
+        }
+
+        {
+            node_type* p2 = p->next()->next()->next()->next()->next();
+
+            while( p2 != nullptr )
+            {
+                if( p2->initialized() && pred( x, p2->value() ) )
+                {
+                    return { p2, itb };
+                }
+
+                p2 = p2->next();
+            }
         }
 
         return end();
