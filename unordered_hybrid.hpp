@@ -116,7 +116,7 @@ struct pow2_fib_size: pow2_size
 template<class T> struct node
 {
     std::uintptr_t next_ = 0;
-    std::size_t hash_ = 0;
+    // std::size_t hash_ = 0;
     std::aligned_storage_t<sizeof(T), alignof(T)> storage_;
 
     static constexpr std::uintptr_t leaf = 1;
@@ -124,17 +124,17 @@ template<class T> struct node
 
     node() = default;
 
-    explicit node( T const& x, std::size_t hash )
+    explicit node( T const& x, std::size_t /*hash*/ )
     {
         ::new( &storage_ ) T( x );
-        hash_ = hash;
+        //hash_ = hash;
         next_ = leaf;
     }
 
-    explicit node( T && x, std::size_t hash )
+    explicit node( T && x, std::size_t /*hash*/ )
     {
         ::new( &storage_ ) T( std::move( x ) );
-        hash_ = hash;
+        //hash_ = hash;
         next_ = leaf;
     }
 
@@ -291,7 +291,7 @@ public:
         if( !p->initialized() )
         {
             ::new( &p->storage_ ) T( std::forward<U>( x ) );
-            p->hash_ = hash;
+            //p->hash_ = hash;
             p->next_ = node_type::leaf;
         }
         else
@@ -544,13 +544,13 @@ private:
     }
 
     template<class Key>
-    iterator find( Key const & x, bucket_iterator itb, std::size_t hash ) const
+    iterator find( Key const & x, bucket_iterator itb, std::size_t /*hash*/ ) const
     {
         node_type * p = itb.p_;
 
         for( ;; )
         {
-            if( p->initialized() && hash == p->hash_ && pred( x, p->value() ) )
+            if( p->initialized() /*&& hash == p->hash_*/ && pred( x, p->value() ) )
             {
                 return { p, itb };
             }
