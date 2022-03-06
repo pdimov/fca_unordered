@@ -14,8 +14,8 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/core/detail/splitmix64.hpp>
 #include <boost/config.hpp>
-#include "fca_simple_unordered.hpp"
 #include "fca_unordered.hpp"
+#include "unordered_hybrid.hpp"
 #ifdef HAVE_ABSEIL
 # include "absl/container/node_hash_map.h"
 # include "absl/container/flat_hash_map.h"
@@ -298,6 +298,7 @@ int main()
     test<fca_pow2_fib_unordered_map>( "fca_pow2_fib_unordered_map" );
     test<fca_fmod_unordered_map>( "fca_fmod_unordered_map" );
     test<fca_fmod_unordered_bucket_map>( "fca_fmod_unordered_bucket_map" );
+    test<unordered_hybrid_map>( "unordered_hybrid_map" );
 
     // test<std::map>( "std::map" );
 

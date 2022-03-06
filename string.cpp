@@ -15,8 +15,8 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/core/detail/splitmix64.hpp>
 #include <boost/config.hpp>
-#include "fca_simple_unordered.hpp"
 #include "fca_unordered.hpp"
+#include "unordered_hybrid.hpp"
 #ifdef HAVE_ABSEIL
 # include "absl/container/node_hash_map.h"
 # include "absl/container/flat_hash_map.h"
@@ -234,22 +234,6 @@ using fca_fmod_unordered_map =
     std::allocator<fca_unordered_impl::map_value_adaptor<K, V>>,
     fca_unordered_impl::prime_fmod_size>;
 
-/*
-template<class K, class V, class H=boost::hash<K>>
-using fca_frng_unordered_map =
-  fca_unordered_map<
-    K, V, H,std::equal_to<K>,
-    std::allocator<fca_unordered_impl::map_value_adaptor<K, V>>,
-    fca_unordered_impl::prime_frng_size>;
-
-template<class K, class V, class H=boost::hash<K>>
-using fca_frng_fib_unordered_map =
-  fca_unordered_map<
-    K, V, H,std::equal_to<K>,
-    std::allocator<fca_unordered_impl::map_value_adaptor<K, V>>,
-    fca_unordered_impl::prime_frng_fib_size>;
-*/
-
 template<class K, class V, class H=boost::hash<K>>
 using fca_pow2_unordered_map =
   fca_unordered_map<
@@ -329,9 +313,6 @@ template<class K, class V> using multi_index_map_fnv1a = multi_index_container<
   >
 >;
 
-template<class K, class V> using fca_simple_unordered_map_fnv1a =
-  fca_simple_unordered_map<K, V, fnv1a_hash>;
-
 template<class K, class V> using fca_unordered_map_fnv1a =
   fca_unordered_map<K, V, fnv1a_hash>;
 
@@ -341,14 +322,6 @@ template<class K, class V> using fca_switch_unordered_map_fnv1a =
 template<class K, class V> using fca_fmod_unordered_map_fnv1a =
   fca_fmod_unordered_map<K, V, fnv1a_hash>;
 
-/*
-template<class K, class V> using fca_frng_unordered_map_fnv1a =
-  fca_frng_unordered_map<K, V, fnv1a_hash>;
-
-template<class K, class V> using fca_frng_fib_unordered_map_fnv1a =
-  fca_frng_fib_unordered_map<K, V, fnv1a_hash>;
-*/
-
 template<class K, class V> using fca_pow2_unordered_map_fnv1a =
   fca_pow2_unordered_map<K, V, fnv1a_hash>;
 
@@ -357,6 +330,9 @@ template<class K, class V> using fca_pow2_fib_unordered_map_fnv1a =
 
 template<class K, class V> using fca_fmod_unordered_bucket_map_fnv1a =
   fca_fmod_unordered_bucket_map<K, V, fnv1a_hash>;
+
+template<class K, class V> using unordered_hybrid_map_fnv1a =
+  unordered_hybrid_map<K, V, fnv1a_hash>;
 
 #ifdef HAVE_ABSEIL
 
@@ -373,16 +349,16 @@ int main()
 {
     init_indices();
     
-    // To reduce clutter, we omit non-FNV-1a tests (different underlying hash
-    // functions) and frng and pow2 altogether (hash bits lost in the process)
-
     test<std_unordered_map_fnv1a>( "std::unordered_map, FNV-1a" );
     test<boost_unordered_map_fnv1a>( "boost::unordered_map, FNV-1a" );
     test<multi_index_map_fnv1a>( "multi_index_map, FNV-1a" );
+
     test<fca_unordered_map_fnv1a>( "fca_unordered_map, FNV-1a" );
     test<fca_pow2_fib_unordered_map_fnv1a>( "fca_pow2_fib_unordered_map, FNV-1a" );
     test<fca_fmod_unordered_map_fnv1a>( "fca_fmod_unordered_map, FNV-1a" );
     test<fca_fmod_unordered_bucket_map_fnv1a>( "fca_fmod_unordered_bucket_map, FNV-1a" );
+
+    test<unordered_hybrid_map_fnv1a>( "unordered_hybrid_map, FNV-1a" );
 
 #ifdef HAVE_ABSEIL
 
