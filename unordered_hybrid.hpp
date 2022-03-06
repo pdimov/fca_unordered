@@ -116,6 +116,7 @@ struct pow2_fib_size: pow2_size
 template<class T> struct node
 {
 	std::uintptr_t next_ = 0;
+	std::size_t hash_ = 0;
 	std::aligned_storage_t<sizeof(T), alignof(T)> storage_;
 
 	static constexpr std::uintptr_t leaf = 1;
@@ -123,15 +124,17 @@ template<class T> struct node
 
 	node() = default;
 
-	explicit node( T const& x )
+	explicit node( T const& x, std::size_t hash )
 	{
 		::new( &storage_ ) T( x );
+		hash_ = hash;
 		next_ = leaf;
 	}
 
-	explicit node( T && x )
+	explicit node( T && x, std::size_t hash )
 	{
 		::new( &storage_ ) T( std::move( x ) );
+		hash_ = hash;
 		next_ = leaf;
 	}
 
@@ -279,7 +282,7 @@ public:
 		return size_policy::position( hash, size_index_ );
 	}
 
-	template<class U> node_type* insert_node( iterator itb, U&& x )
+	template<class U> node_type* insert_node( iterator itb, U&& x, std::size_t hash )
 	{
 		node_type* p = itb.p_;
 
@@ -288,11 +291,12 @@ public:
 		if( !p->initialized() )
 		{
 			::new( &p->storage_ ) T( std::forward<U>( x ) );
+			p->hash_ = hash;
 			p->next_ = node_type::leaf;
 		}
 		else
 		{
-			node_type* p2 = ::new node_type( std::forward<U>( x ) );
+			node_type* p2 = ::new node_type( std::forward<U>( x ), hash );
 			p2->next_ = p->next_;
 			p->next_ = (std::uintptr_t)p2 | 1;
 
@@ -488,7 +492,8 @@ public:
 	template<class Key>
 	iterator find( Key const & x ) const
 	{
-		return find( x, buckets.at( buckets.position( h( x ) ) ) );
+		std::size_t hash = h( x );
+		return find( x, buckets.at( buckets.position( hash ) ), hash );
 	}
 
 private:
@@ -498,7 +503,7 @@ private:
 		auto hash = h( x );
 		auto itb = buckets.at( buckets.position( hash ) );
 
-		auto it = find( x, itb );
+		auto it = find( x, itb, hash );
 
 		if( it != end() )
 		{
@@ -511,7 +516,7 @@ private:
 			itb = buckets.at( buckets.position( hash ) );
 		}
 
-		auto p = buckets.insert_node( itb, std::forward<Value>( x ) );
+		auto p = buckets.insert_node( itb, std::forward<Value>( x ), hash );
 		++size_;
 
 		return { { p, itb }, true };
@@ -539,13 +544,13 @@ private:
 	}
 
 	template<class Key>
-	iterator find( Key const & x, bucket_iterator itb ) const
+	iterator find( Key const & x, bucket_iterator itb, std::size_t hash ) const
 	{
 		node_type * p = itb.p_;
 
 		for( ;; )
 		{
-			if( p->initialized() && pred( x, p->value() ) )
+			if( p->initialized() && hash == p->hash_ && pred( x, p->value() ) )
 			{
 				return { p, itb };
 			}
