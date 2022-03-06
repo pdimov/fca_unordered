@@ -115,27 +115,25 @@ struct pow2_fib_size: pow2_size
 
 template<class T> struct node
 {
-    std::uintptr_t next_ = 0;
-    // std::size_t hash_ = 0;
+    node* next_ = nullptr;
+    bool initialized_ = false;
     std::aligned_storage_t<sizeof(T), alignof(T)> storage_;
 
-    static constexpr std::uintptr_t leaf = 1;
-    static constexpr std::uintptr_t sentinel = 2;
+    // static constexpr std::uintptr_t leaf = 1;
+    static constexpr node* sentinel = (node*)-1;
 
     node() = default;
 
     explicit node( T const& x, std::size_t /*hash*/ )
     {
         ::new( &storage_ ) T( x );
-        //hash_ = hash;
-        next_ = leaf;
+        initialized_ = true;
     }
 
     explicit node( T && x, std::size_t /*hash*/ )
     {
         ::new( &storage_ ) T( std::move( x ) );
-        //hash_ = hash;
-        next_ = leaf;
+        initialized_ = true;
     }
 
     ~node()
@@ -162,18 +160,17 @@ template<class T> struct node
         BOOST_ASSERT( initialized() );
 
         value().~T();
-
-        next_ &= ~(std::uintptr_t)1;
+        initialized_ = false;
     }
 
     bool initialized() const noexcept
     {
-        return ( next_ & 1 ) != 0;
+        return initialized_;
     }
 
     node* next() const noexcept
     {
-        return (node*)( next_ &~ (std::uintptr_t)1 );
+        return next_;
     }
 
     T& value() noexcept
@@ -292,13 +289,13 @@ public:
         {
             ::new( &p->storage_ ) T( std::forward<U>( x ) );
             //p->hash_ = hash;
-            p->next_ = node_type::leaf;
+            p->initialized_ = true;
         }
         else
         {
             node_type* p2 = ::new node_type( std::forward<U>( x ), hash );
             p2->next_ = p->next_;
-            p->next_ = (std::uintptr_t)p2 | 1;
+            p->next_ = p2;
 
             p = p2;
         }
