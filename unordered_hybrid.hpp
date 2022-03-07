@@ -157,6 +157,24 @@ template<class T> struct node
     node( node&& ) = delete;
     node& operator=( node&& ) = delete;
 
+    void construct( T const& x, std::size_t hash )
+    {
+        BOOST_ASSERT( initialized() );
+
+        ::new( &storage_ ) T( x );
+        hash_ = hash;
+        next_ |= 1;
+    }
+
+    void construct( T && x, std::size_t hash )
+    {
+        BOOST_ASSERT( initialized() );
+
+        ::new( &storage_ ) T( std::move( x ) );
+        hash_ = hash;
+        next_ |= 1;
+    }
+
     void destroy()
     {
         BOOST_ASSERT( initialized() );
@@ -290,9 +308,7 @@ public:
 
         if( !p->initialized() )
         {
-            ::new( &p->storage_ ) T( std::forward<U>( x ) );
-            p->hash_ = hash;
-            p->next_ = node_type::leaf;
+            p->construct( std::forward<U>( x ), hash );
         }
         else
         {
