@@ -352,12 +352,10 @@ int main()
     test<std_unordered_map_fnv1a>( "std::unordered_map, FNV-1a" );
     test<boost_unordered_map_fnv1a>( "boost::unordered_map, FNV-1a" );
     test<multi_index_map_fnv1a>( "multi_index_map, FNV-1a" );
-
     test<fca_unordered_map_fnv1a>( "fca_unordered_map, FNV-1a" );
     test<fca_pow2_fib_unordered_map_fnv1a>( "fca_pow2_fib_unordered_map, FNV-1a" );
     test<fca_fmod_unordered_map_fnv1a>( "fca_fmod_unordered_map, FNV-1a" );
     test<fca_fmod_unordered_bucket_map_fnv1a>( "fca_fmod_unordered_bucket_map, FNV-1a" );
-
     test<unordered_hybrid_map_fnv1a>( "unordered_hybrid_map, FNV-1a" );
 
 #ifdef HAVE_ABSEIL

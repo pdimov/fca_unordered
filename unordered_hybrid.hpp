@@ -115,27 +115,22 @@ struct pow2_fib_size: pow2_size
 
 template<class T> struct node
 {
-    std::uintptr_t next_ = 0;
+    node* next_ = nullptr;
     std::size_t hash_ = 0;
     std::aligned_storage_t<sizeof(T), alignof(T)> storage_;
-
-    static constexpr std::uintptr_t leaf = 1;
-    static constexpr std::uintptr_t sentinel = 2;
 
     node() = default;
 
     explicit node( T const& x, std::size_t hash )
     {
         ::new( &storage_ ) T( x );
-        hash_ = hash;
-        next_ = leaf;
+        hash_ = hash | 1;
     }
 
     explicit node( T && x, std::size_t hash )
     {
         ::new( &storage_ ) T( std::move( x ) );
-        hash_ = hash;
-        next_ = leaf;
+        hash_ = hash | 1;
     }
 
     ~node()
@@ -145,7 +140,7 @@ template<class T> struct node
             value().~T();
         }
 
-        if( next_ != sentinel )
+        if( next_ != (node*)-1 )
         {
             delete next(); // should use the allocator
         }
@@ -162,8 +157,7 @@ template<class T> struct node
         BOOST_ASSERT( initialized() );
 
         ::new( &storage_ ) T( x );
-        hash_ = hash;
-        next_ |= 1;
+        hash_ = hash | 1;
     }
 
     void construct( T && x, std::size_t hash )
@@ -171,8 +165,7 @@ template<class T> struct node
         BOOST_ASSERT( initialized() );
 
         ::new( &storage_ ) T( std::move( x ) );
-        hash_ = hash;
-        next_ |= 1;
+        hash_ = hash | 1;
     }
 
     void destroy()
@@ -180,18 +173,17 @@ template<class T> struct node
         BOOST_ASSERT( initialized() );
 
         value().~T();
-
-        next_ &= ~(std::uintptr_t)1;
+        hash_ = 0;
     }
 
     bool initialized() const noexcept
     {
-        return ( next_ & 1 ) != 0;
+        return ( hash_ & 1 ) != 0;
     }
 
     node* next() const noexcept
     {
-        return (node*)( next_ &~ (std::uintptr_t)1 );
+        return next_;
     }
 
     T& value() noexcept
@@ -208,7 +200,7 @@ template<class T> struct node
 
     bool empty() const noexcept
     {
-        if( initialized() || next_ == sentinel ) return false;
+        if( initialized() || next_ == (node*)-1 ) return false;
 
         if( next() == nullptr ) return true;
 
@@ -274,7 +266,7 @@ public:
         size_( size_policy::size(size_index_) ),
         buckets( size_ + 1, al )
     {
-        buckets.back().next_ = node_type::sentinel;
+        buckets.back().next_ = (node_type*)-1;
     }
 
     bucket_array( bucket_array&& ) = default;
@@ -304,7 +296,7 @@ public:
     {
         node_type* p = itb.p_;
 
-        BOOST_ASSERT( p->next_ != node_type::sentinel );
+        BOOST_ASSERT( p->next_ != (node*)-1 );
 
         if( !p->initialized() )
         {
@@ -314,7 +306,7 @@ public:
         {
             node_type* p2 = ::new node_type( std::forward<U>( x ), hash );
             p2->next_ = p->next_;
-            p->next_ = (std::uintptr_t)p2 | 1;
+            p->next_ = p2;
 
             p = p2;
         }
@@ -342,6 +334,7 @@ public:
 
             p->next_ = n->next_;
             n->next_ = 0;
+
             delete n; // should use the allocator
         }
 
@@ -441,7 +434,7 @@ public:
                     p_ = n;
                 }
 
-                if( p_->initialized() || p_->next_ == node_type::sentinel ) break;
+                if( p_->initialized() || p_->next_ == (node_type*)-1 ) break;
             }
         }
     };
@@ -566,7 +559,7 @@ private:
 
         for( ;; )
         {
-            if( p->initialized() && hash == p->hash_ && pred( x, p->value() ) )
+            if( p->hash_ == ( hash | 1 ) && pred( x, p->value() ) )
             {
                 return { p, itb };
             }
