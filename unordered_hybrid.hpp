@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <boost/container_hash/hash.hpp>
 #include <boost/iterator/iterator_facade.hpp>
+#include <boost/core/allocator_access.hpp>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -113,7 +114,7 @@ struct pow2_fib_size: pow2_size
     }
 };
 
-template<class T> struct node
+template<class T, class A> struct node
 {
     node* next_ = nullptr;
     std::size_t hash_ = 0;
@@ -140,9 +141,16 @@ template<class T> struct node
             value().~T();
         }
 
-        if( next_ != (node*)-1 )
+        if( next_ != nullptr && next_ != (node*)-1 )
         {
-            delete next(); // should use the allocator
+            // delete next();
+
+            using allocator_type = typename boost::allocator_rebind<A, node>::type;
+
+            allocator_type a;
+
+            boost::allocator_destroy( a, next_ );
+            boost::allocator_deallocate( a, next_, 1 );
         }
     }
 
@@ -154,7 +162,7 @@ template<class T> struct node
 
     void construct( T const& x, std::size_t hash )
     {
-        BOOST_ASSERT( initialized() );
+        BOOST_ASSERT( !initialized() );
 
         ::new( &storage_ ) T( x );
         hash_ = hash | 1;
@@ -162,7 +170,7 @@ template<class T> struct node
 
     void construct( T && x, std::size_t hash )
     {
-        BOOST_ASSERT( initialized() );
+        BOOST_ASSERT( !initialized() );
 
         ::new( &storage_ ) T( std::move( x ) );
         hash_ = hash | 1;
@@ -208,11 +216,13 @@ template<class T> struct node
     }
 };
 
-template<class T> struct bucket_iterator: public boost::iterator_facade<bucket_iterator<T>, node<T>, boost::forward_traversal_tag>
+template<class T, class A> struct bucket_iterator: public boost::iterator_facade<bucket_iterator<T, A>, node<T, A>, boost::forward_traversal_tag>
 {
 private:
 
-    node<T>* p_ = nullptr;
+    using node_type = node<T, A>;
+
+    node_type* p_ = nullptr;
 
 public:
 
@@ -224,7 +234,7 @@ private:
     template<class, class, class> friend class bucket_array;
     template<class, class, class, class, class> friend class unordered_hybrid_set;
 
-    bucket_iterator( node<T>* p ): p_( p ) {}
+    bucket_iterator( node_type* p ): p_( p ) {}
 
     auto& dereference() const noexcept { return *p_; }
     bool equal( bucket_iterator const & x) const noexcept { return p_ == x.p_; }
@@ -244,14 +254,14 @@ template<class T, class Allocator, class SizePolicy> class bucket_array
 private:
 
     using size_policy = SizePolicy;
-    using node_type = node<T>;
+    using node_type = node<T, Allocator>;
 
 public:
 
-    using value_type = node<T>;
+    using value_type = node<T, Allocator>;
     using size_type = std::size_t;
-    using allocator_type = Allocator;
-    using iterator = bucket_iterator<T>;
+    using allocator_type = typename boost::allocator_rebind<Allocator, node_type>::type;
+    using iterator = bucket_iterator<T, Allocator>;
 
 private:
 
@@ -296,7 +306,7 @@ public:
     {
         node_type* p = itb.p_;
 
-        BOOST_ASSERT( p->next_ != (node*)-1 );
+        BOOST_ASSERT( p->next_ != (node_type*)-1 );
 
         if( !p->initialized() )
         {
@@ -304,7 +314,22 @@ public:
         }
         else
         {
-            node_type* p2 = ::new node_type( std::forward<U>( x ), hash );
+            // node_type* p2 = ::new node_type( std::forward<U>( x ), hash );
+
+            allocator_type a;
+
+            node_type * p2 = boost::allocator_allocate( a, 1 );
+
+            try
+            {
+                boost::allocator_construct( a, p2, std::forward<U>( x ), hash );
+            }
+            catch( ... )
+            {
+                boost::allocator_deallocate( a, p2, 1 );
+                throw;
+            }
+
             p2->next_ = p->next_;
             p->next_ = p2;
 
@@ -335,7 +360,12 @@ public:
             p->next_ = n->next_;
             n->next_ = 0;
 
-            delete n; // should use the allocator
+            // delete n;
+
+            allocator_type a;
+
+            boost::allocator_destroy( a, n );
+            boost::allocator_deallocate( a, n, 1 );
         }
 
         adjust_begin( itb );
@@ -358,16 +388,9 @@ class unordered_hybrid_set
 {
 private:
 
-    using node_type = node<T>;
+    using node_type = node<T, Allocator>;
 
-    using node_allocator_type =
-        typename std::allocator_traits<Allocator>::
-        template rebind_alloc<node_type>;
-
-    using node_alloc_traits = std::allocator_traits<node_allocator_type>;
-
-    using bucket_array_type = bucket_array<T, node_allocator_type, SizePolicy>;
-
+    using bucket_array_type = bucket_array<T, Allocator, SizePolicy>;
     using bucket_iterator = typename bucket_array_type::iterator;
 
 public:
@@ -380,7 +403,7 @@ private:
 
     Hash                h;
     Pred                pred;
-    node_allocator_type al;
+    Allocator           al;
     float               mlf = 0.875f;
     size_type           size_ = 0;
     bucket_array_type   buckets{ 0, al };
@@ -443,7 +466,7 @@ public:
 
     unordered_hybrid_set() = default;
 
-    unordered_hybrid_set( std::size_t n, node_allocator_type const& al ): al( al ), buckets( n, al )
+    unordered_hybrid_set( std::size_t n, Allocator const& al ): al( al ), buckets( n, al )
     {
     }
 
