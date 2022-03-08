@@ -404,7 +404,7 @@ private:
     Hash                h;
     Pred                pred;
     Allocator           al;
-    float               mlf = 0.875f;
+    float               mlf = 1.0f;
     size_type           size_ = 0;
     bucket_array_type   buckets{ 0, al };
     size_type           ml = max_load();
