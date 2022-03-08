@@ -125,13 +125,13 @@ template<class T, class A> struct node
     explicit node( T const& x, std::size_t hash )
     {
         ::new( &storage_ ) T( x );
-        hash_ = hash | 1;
+        hash_ = hash * 2 + 1;
     }
 
     explicit node( T && x, std::size_t hash )
     {
         ::new( &storage_ ) T( std::move( x ) );
-        hash_ = hash | 1;
+        hash_ = hash * 2 + 1;
     }
 
     ~node()
@@ -165,7 +165,7 @@ template<class T, class A> struct node
         BOOST_ASSERT( !initialized() );
 
         ::new( &storage_ ) T( x );
-        hash_ = hash | 1;
+        hash_ = hash * 2 + 1;
     }
 
     void construct( T && x, std::size_t hash )
@@ -173,7 +173,7 @@ template<class T, class A> struct node
         BOOST_ASSERT( !initialized() );
 
         ::new( &storage_ ) T( std::move( x ) );
-        hash_ = hash | 1;
+        hash_ = hash * 2 + 1;
     }
 
     void destroy()
@@ -582,7 +582,7 @@ private:
 
         for( ;; )
         {
-            if( p->hash_ == ( hash | 1 ) && pred( x, p->value() ) )
+            if( p->hash_ == ( hash * 2 + 1 ) && pred( x, p->value() ) )
             {
                 return { p, itb };
             }
